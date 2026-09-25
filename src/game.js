@@ -40,7 +40,11 @@ addEventListener("keyup",()=>{input.x=input.y=0});
 function update(dt){
   player.attackCd=Math.max(0,player.attackCd-dt);
   if(input.x||input.y){const l=Math.hypot(input.x,input.y)||1,dx=input.x/l,dy=input.y/l;player.x+=dx*player.speed*dt;player.y+=dy*player.speed*dt;player.dirX=dx;player.dirY=dy}
-  player.x=Math.max(24,Math.min(WORLD.w-24,player.x));player.y=Math.max(24,Math.min(WORLD.h-24,player.y));
+  // Keep the camera locked to the player even at world boundaries.
+  // The player stops at the camera-safe world limit, so neither can drift independently.
+  const halfViewW=Math.min(W/2,WORLD.w/2),halfViewH=Math.min(H/2,WORLD.h/2);
+  player.x=Math.max(halfViewW,Math.min(WORLD.w-halfViewW,player.x));
+  player.y=Math.max(halfViewH,Math.min(WORLD.h-halfViewH,player.y));
   for(const m of mobs){
     const dx=player.x-m.x,dy=player.y-m.y,d=Math.hypot(dx,dy)||1;
     if(d<155)m.aggro=true;
