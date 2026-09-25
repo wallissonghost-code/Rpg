@@ -1,24 +1,14 @@
-import {CONFIG} from "../core/config.js";import {state,nowSeconds} from "../core/state.js";
+import {CONFIG} from "../core/config.js";import {state,nowSeconds} from "../core/state.js";import {canTraverse,isTerrainBlocked} from "../world/terrain.js";
+const ACTIVE_RADIUS=1450,DESPAWN_RADIUS=1900,TARGET_MOBS=42,SPAWN_MIN=420,SPAWN_MAX=1250;let nextPack=1,spawnTick=0;
 function makeMob(x,y,pack){return{x,y,homeX:x,homeY:y,pack,r:CONFIG.mob.radius,hp:CONFIG.mob.maxHp,maxHp:CONFIG.mob.maxHp,speed:CONFIG.mob.minSpeed+Math.random()*(CONFIG.mob.maxSpeed-CONFIG.mob.minSpeed),hit:0,state:"IDLE",attackCd:0,lastCombatAt:-Infinity,wanderA:Math.random()*Math.PI*2,wanderT:Math.random()*4}}
-export function seedWorld(){let pack=1;for(let i=0;i<CONFIG.spawn.encounters;i++){const group=Math.random()<.55?1:2+Math.floor(Math.random()*(CONFIG.spawn.maxGroup-1)),cx=220+Math.random()*(CONFIG.world.width-440),cy=220+Math.random()*(CONFIG.world.height-440);for(let j=0;j<group;j++){const a=Math.random()*Math.PI*2,r=Math.random()*95;state.mobs.push(makeMob(cx+Math.cos(a)*r,cy+Math.sin(a)*r,pack))}pack++}}
-export function updateMobs(dt){
- if(state.openBag||state.mapOpen||state.inventoryOpen)return;const p=state.player,t=nowSeconds();
+function tryMove(m,dx,dy){const nx=m.x+dx,ny=m.y+dy;if(nx<m.r||ny<m.r||nx>CONFIG.world.width-m.r||ny>CONFIG.world.height-m.r)return false;if(!canTraverse(m.x,m.y,nx,ny,m.r))return false;m.x=nx;m.y=ny;return true}
+function spawnEncounter(){const p=state.player,a=Math.random()*Math.PI*2,d=SPAWN_MIN+Math.random()*(SPAWN_MAX-SPAWN_MIN),cx=p.x+Math.cos(a)*d,cy=p.y+Math.sin(a)*d;if(cx<100||cy<100||cx>CONFIG.world.width-100||cy>CONFIG.world.height-100||isTerrainBlocked(cx,cy,30))return;const pack=nextPack++,group=Math.random()<.62?1:2+Math.floor(Math.random()*Math.min(3,CONFIG.spawn.maxGroup-1));for(let j=0;j<group&&state.mobs.length<TARGET_MOBS;j++){const q=Math.random()*Math.PI*2,r=Math.random()*70,x=cx+Math.cos(q)*r,y=cy+Math.sin(q)*r;if(!isTerrainBlocked(x,y,CONFIG.mob.radius))state.mobs.push(makeMob(x,y,pack))}}
+function maintainPopulation(dt){spawnTick-=dt;if(spawnTick>0)return;spawnTick=.55;const p=state.player;state.mobs=state.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)<DESPAWN_RADIUS);let attempts=0;while(state.mobs.length<TARGET_MOBS&&attempts++<8)spawnEncounter()}
+export function seedWorld(){state.mobs=[];for(let i=0;i<12;i++)spawnEncounter()}
+export function updateMobs(dt){maintainPopulation(dt);if(state.openBag||state.mapOpen||state.inventoryOpen)return;const p=state.player,t=nowSeconds();
  for(const m of state.mobs){m.attackCd=Math.max(0,m.attackCd-dt);m.hit=Math.max(0,m.hit-dt);const dx=p.x-m.x,dy=p.y-m.y,d=Math.hypot(dx,dy)||1,homeDist=Math.hypot(m.x-m.homeX,m.y-m.homeY);
   if((m.state==="IDLE"||m.state==="REGEN")&&d<CONFIG.mob.aggroRange){m.state="CHASE";m.lastCombatAt=t;p.lastCombatAt=t}
-  if(m.state==="CHASE"||m.state==="ATTACK"){
-   if(homeDist>CONFIG.mob.maxChaseFromHome||d>CONFIG.mob.disengageRange){m.state="RETURN"}
-   else if(d>CONFIG.mob.attackRange){m.state="CHASE";m.x+=dx/d*m.speed*dt;m.y+=dy/d*m.speed*dt}
-   else{m.state="ATTACK";if(m.attackCd<=0){p.hp=Math.max(0,p.hp-CONFIG.mob.attackDamage);m.attackCd=CONFIG.mob.attackCooldown;m.lastCombatAt=t;p.lastCombatAt=t}}
-  }else if(m.state==="RETURN"){
-   const hx=m.homeX-m.x,hy=m.homeY-m.y,hd=Math.hypot(hx,hy)||1;
-   if(hd<5){m.x=m.homeX;m.y=m.homeY;m.state=m.hp<m.maxHp?"REGEN":"IDLE"}
-   else{m.x+=hx/hd*m.speed*CONFIG.mob.returnSpeedMultiplier*dt;m.y+=hy/hd*m.speed*CONFIG.mob.returnSpeedMultiplier*dt}
-  }else{
-   if(m.hp<m.maxHp&&t-m.lastCombatAt>=CONFIG.mob.regenDelay){m.state="REGEN";m.hp=Math.min(m.maxHp,m.hp+CONFIG.mob.regenRate*dt)}
-   if(m.hp>=m.maxHp&&m.state==="REGEN")m.state="IDLE";
-   m.wanderT-=dt;if(m.wanderT<=0){m.wanderT=1.5+Math.random()*4;m.wanderA=Math.random()*Math.PI*2}
-   if(Math.hypot(m.x-m.homeX,m.y-m.homeY)>CONFIG.mob.wanderRadius)m.wanderA=Math.atan2(m.homeY-m.y,m.homeX-m.x);
-   m.x+=Math.cos(m.wanderA)*m.speed*.18*dt;m.y+=Math.sin(m.wanderA)*m.speed*.18*dt;
-  }
- }
-}
+  if(m.state==="CHASE"||m.state==="ATTACK"){if(homeDist>CONFIG.mob.maxChaseFromHome||d>CONFIG.mob.disengageRange)m.state="RETURN";else if(d>CONFIG.mob.attackRange){m.state="CHASE";if(!tryMove(m,dx/d*m.speed*dt,dy/d*m.speed*dt))m.state="RETURN"}else{m.state="ATTACK";if(m.attackCd<=0){p.hp=Math.max(0,p.hp-CONFIG.mob.attackDamage);m.attackCd=CONFIG.mob.attackCooldown;m.lastCombatAt=t;p.lastCombatAt=t}}}
+  else if(m.state==="RETURN"){const hx=m.homeX-m.x,hy=m.homeY-m.y,hd=Math.hypot(hx,hy)||1;if(hd<5){m.x=m.homeX;m.y=m.homeY;m.state=m.hp<m.maxHp?"REGEN":"IDLE"}else if(!tryMove(m,hx/hd*m.speed*CONFIG.mob.returnSpeedMultiplier*dt,hy/hd*m.speed*CONFIG.mob.returnSpeedMultiplier*dt)){m.homeX=m.x;m.homeY=m.y;m.state="IDLE"}}
+  else{if(m.hp<m.maxHp&&t-m.lastCombatAt>=CONFIG.mob.regenDelay){m.state="REGEN";m.hp=Math.min(m.maxHp,m.hp+CONFIG.mob.regenRate*dt)}if(m.hp>=m.maxHp&&m.state==="REGEN")m.state="IDLE";m.wanderT-=dt;if(m.wanderT<=0){m.wanderT=1.5+Math.random()*4;m.wanderA=Math.random()*Math.PI*2}if(Math.hypot(m.x-m.homeX,m.y-m.homeY)>CONFIG.mob.wanderRadius)m.wanderA=Math.atan2(m.homeY-m.y,m.homeX-m.x);if(!tryMove(m,Math.cos(m.wanderA)*m.speed*.18*dt,Math.sin(m.wanderA)*m.speed*.18*dt))m.wanderA+=Math.PI*.7}
+ }}}
