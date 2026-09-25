@@ -1,12 +1,9 @@
 import {state} from "../core/state.js";
-const CAPACITY=40;
-export function initInventory(){
- const panel=document.querySelector("#inventoryPanel"),open=document.querySelector("#inventoryOpen"),close=document.querySelector("#inventoryClose"),grid=document.querySelector("#inventoryGrid"),count=document.querySelector("#inventoryCount");
- for(let i=0;i<CAPACITY;i++){const slot=document.createElement("div");slot.className="inventory-slot";slot.dataset.slot=i;grid.appendChild(slot)}
- function sync(){const slots=grid.children,used=Math.min(state.drops,CAPACITY);count.textContent=used;for(let i=0;i<CAPACITY;i++){const filled=i<used,s=slots[i];s.classList.toggle("filled",filled);s.innerHTML=filled?'<span class="item-mark"></span><b class="item-qty">1</b>':""}}
- function setOpen(value){state.inventoryOpen=value;state.input.x=state.input.y=0;document.querySelector("#stick").style.transform="";panel.hidden=!value;if(value)sync()}
- open.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();if(state.openBag||state.mapOpen)return;setOpen(true)});
- close.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();setOpen(false)});
- panel.addEventListener("pointerdown",e=>{if(e.target===panel)setOpen(false)});
- return{sync,close:()=>setOpen(false)}
-}
+const CAPACITY=40,SLOT_LABELS={head:"Capacete",body:"Armadura",legs:"Calça",feet:"Botas",mystic:"Anel"};
+const icon=t=>`<span class="gear-icon gear-${t}" aria-hidden="true"></span>`;
+export function initInventory(){const panel=document.querySelector("#inventoryPanel"),open=document.querySelector("#inventoryOpen"),close=document.querySelector("#inventoryClose"),grid=document.querySelector("#inventoryGrid"),count=document.querySelector("#inventoryCount");for(let i=0;i<CAPACITY;i++){const slot=document.createElement("button");slot.className="inventory-slot";slot.dataset.slot=i;grid.appendChild(slot)}
+ function equip(item){const previous=state.equipment[item.slot];state.equipment[item.slot]=item;state.inventory=state.inventory.filter(i=>i.id!==item.id);if(previous)state.inventory.push(previous);sync()}
+ function unequip(type){const item=state.equipment[type];if(!item||state.inventory.length>=CAPACITY)return;state.inventory.push(item);state.equipment[type]=null;sync()}
+ document.querySelectorAll(".equip-slot").forEach(el=>el.addEventListener("pointerdown",()=>unequip(el.dataset.equip)));
+ function sync(){const slots=grid.children,entries=[];if(state.coins>0)entries.push({kind:"coins"});entries.push(...state.inventory.map(item=>({kind:"item",item})));count.textContent=Math.min(entries.length,CAPACITY);for(let i=0;i<CAPACITY;i++){const e=entries[i],s=slots[i];s.className="inventory-slot";s.innerHTML="";s.onclick=null;if(!e)continue;s.classList.add("filled");if(e.kind==="coins"){s.classList.add("coins-slot");s.innerHTML=`<span class="coin-icon"></span><b class="item-qty">${Math.round(state.coins)}</b><small>Moedas</small>`}else{s.classList.add("gear-slot");s.innerHTML=`${icon(e.item.type)}<small>${e.item.name}</small>`;s.onclick=()=>equip(e.item)}}for(const [type,item] of Object.entries(state.equipment)){const el=document.querySelector(`[data-equip="${type}"]`);el.classList.toggle("equipped",!!item);el.innerHTML=item?`${icon(item.type)}<small>${SLOT_LABELS[type]}</small>`:`<small>${SLOT_LABELS[type]}</small>`}}
+ function setOpen(value){state.inventoryOpen=value;state.input.x=state.input.y=0;document.querySelector("#stick").style.transform="";panel.hidden=!value;if(value)sync()}open.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();if(state.openBag||state.mapOpen)return;setOpen(true)});close.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();setOpen(false)});panel.addEventListener("pointerdown",e=>{if(e.target===panel)setOpen(false)});return{sync,close:()=>setOpen(false)}}
