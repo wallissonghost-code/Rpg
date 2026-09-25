@@ -1,0 +1,4 @@
+import {MapSystem} from "./mapSystem.js";
+export function initMinimap(onOpen){const canvas=document.querySelector("#minimapCanvas"),ctx=canvas.getContext("2d"),button=document.querySelector("#minimap");button.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();onOpen()});
+ function draw(){const w=canvas.width,h=canvas.height,p=MapSystem.playerNormalized();ctx.clearRect(0,0,w,h);ctx.fillStyle="#17271f";ctx.fillRect(0,0,w,h);ctx.strokeStyle="#ffffff12";ctx.lineWidth=1;for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(w*i/4,0);ctx.lineTo(w*i/4,h);ctx.stroke();ctx.beginPath();ctx.moveTo(0,h*i/4);ctx.lineTo(w,h*i/4);ctx.stroke()}ctx.fillStyle="#72b8ff";ctx.beginPath();ctx.arc(p.x*w,p.y*h,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke()}
+ return{draw}}
