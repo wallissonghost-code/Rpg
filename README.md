@@ -17,3 +17,6 @@ Mundo 2D amplo com câmera, encontros de mobs, combate, drops, sacola persistent
 O jogador regenera 1 HP/s após 5 s fora de combate. Mobs possuem território, limite de perseguição, cooldown entre ataques, retorno ao ponto de origem e regeneração após o combate.
 
 Os valores de balanceamento ficam centralizados em `src/core/config.js` para facilitar skills, atributos, equipamentos e tipos diferentes de inimigos futuramente.
+
+
+<!-- vercel-git-connected: 2026-09-25 -->
