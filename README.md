@@ -1,18 +1,19 @@
-# RPG Mobile — Prototype 01
+# RPG Mobile — Prototype
 
-Primeiro núcleo jogável 2D, independente de Roblox, pensado para evoluir para app Android/iOS.
+Jogo 2D mobile independente, estruturado para evolução incremental sem concentrar as mecânicas em um único arquivo.
 
-## Implementado
-- arena 2D em Canvas
-- personagem controlável por joystick virtual
-- botão de ataque
-- mobs com perseguição, HP, dano, morte e respawn
-- drop coletável
-- contador de moedas/drops
-- HUD responsivo e safe-area para celulares
-- teclado para testes no desktop (WASD/setas + espaço)
+## Estrutura
+- `src/main.js` — inicialização e game loop
+- `src/core/` — configuração e estado compartilhado
+- `src/player/` — movimento, combate e regeneração do jogador
+- `src/mobs/` — spawn e máquina de estados da IA
+- `src/items/` — drops, morte e sacola de recuperação
+- `src/input/` — joystick, teclado e proteção de gestos mobile
+- `src/rendering/` — Canvas e HUD
 
-## Próximos módulos
-Sprites/frame animation, inventário, equipamentos/raridades, tabela real de loot, XP/level, mapas e bosses.
+## Gameplay atual
+Mundo 2D amplo com câmera, encontros de mobs, combate, drops, sacola persistente no local da morte e regeneração pós-combate.
 
-> Esta etapa é um protótipo web mobile do core de gameplay. Empacotamento nativo e configuração de publicação nas lojas entram depois que o loop principal estiver validado.
+O jogador regenera 1 HP/s após 5 s fora de combate. Mobs possuem território, limite de perseguição, cooldown entre ataques, retorno ao ponto de origem e regeneração após o combate.
+
+Os valores de balanceamento ficam centralizados em `src/core/config.js` para facilitar skills, atributos, equipamentos e tipos diferentes de inimigos futuramente.
