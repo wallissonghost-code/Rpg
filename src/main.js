@@ -1,5 +1,5 @@
-import {CONFIG} from "./core/config.js";import {state} from "./core/state.js";import {updatePlayer} from "./player/player.js";import {seedWorld,updateMobs} from "./mobs/mobs.js";import {updateItems,handleDeath} from "./items/items.js";import {initInput} from "./input/input.js";import {resize,draw,updateHud} from "./rendering/renderer.js";
-let last=performance.now();
+import {CONFIG} from "./core/config.js";import {state} from "./core/state.js";import {updatePlayer} from "./player/player.js";import {seedWorld,updateMobs} from "./mobs/mobs.js";import {updateItems,handleDeath} from "./items/items.js";import {initInput} from "./input/input.js";import {resize,draw,updateHud} from "./rendering/renderer.js";import {initNavigation} from "./navigation/navigation.js";
+let last=performance.now(),navigation;
 function updateCamera(){const v=state.viewport,p=state.player;state.camera.x=Math.max(0,Math.min(CONFIG.world.width-v.w,p.x-v.w/2));state.camera.y=Math.max(0,Math.min(CONFIG.world.height-v.h,p.y-v.h/2))}
-function loop(now){const dt=Math.min((now-last)/1000,.033);last=now;updatePlayer(dt);updateMobs(dt);updateItems(dt);handleDeath();updateCamera();updateHud();draw();requestAnimationFrame(loop)}
-addEventListener("resize",resize);resize();initInput();seedWorld();requestAnimationFrame(loop);
+function loop(now){const dt=Math.min((now-last)/1000,.033);last=now;updatePlayer(dt);updateMobs(dt);updateItems(dt);handleDeath();updateCamera();updateHud();navigation.update(dt);draw();requestAnimationFrame(loop)}
+addEventListener("resize",resize);resize();initInput();seedWorld();navigation=initNavigation();requestAnimationFrame(loop);
