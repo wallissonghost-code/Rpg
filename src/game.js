@@ -1,13 +1,13 @@
 const canvas=document.querySelector("#canvas"),ctx=canvas.getContext("2d");
 let W=0,H=0,dpr=1,last=performance.now();
 const WORLD={w:12000,h:12000};
-const player={x:WORLD.w/2,y:WORLD.h/2,r:20,hp:100,maxHp:100,speed:220,damage:20,dirX:1,dirY:0,attackCd:0};
+const player={x:WORLD.w/2,y:WORLD.h/2,r:20,hp:100,maxHp:100,speed:220,damage:20,dirX:1,dirY:0,attackCd:0,lastCombatAt:-Infinity,regenDelay:5,regenRate:8};
 const camera={x:0,y:0}; let mobs=[],loot=[],deathBags=[],coins=0,drops=0,openBag=null; const input={x:0,y:0};
 const bagUI=document.querySelector("#deathBag"),bagItems=document.querySelector("#bagItems"),bagClose=document.querySelector("#bagClose");
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)} addEventListener("resize",resize);resize();
 function makeMob(x,y,pack=0){return{x,y,homeX:x,homeY:y,pack,r:19,hp:60,maxHp:60,speed:46+Math.random()*18,hit:0,aggro:false,wanderA:Math.random()*Math.PI*2,wanderT:Math.random()*4}}
 function seedWorld(){let pack=1;for(let i=0;i<85;i++){const group=Math.random()<.55?1:2+Math.floor(Math.random()*5),cx=220+Math.random()*(WORLD.w-440),cy=220+Math.random()*(WORLD.h-440);for(let j=0;j<group;j++){const a=Math.random()*Math.PI*2,r=Math.random()*95;mobs.push(makeMob(cx+Math.cos(a)*r,cy+Math.sin(a)*r,pack))}pack++}}seedWorld();
-function attack(){if(player.attackCd>0||openBag)return;player.attackCd=.38;for(const m of mobs){const dx=m.x-player.x,dy=m.y-player.y,d=Math.hypot(dx,dy);if(d<92){m.hp-=player.damage;m.hit=.12;m.aggro=true;if(m.hp<=0){loot.push({x:m.x,y:m.y,r:9,t:30,value:5});m.dead=true}}}mobs=mobs.filter(m=>!m.dead)}
+function attack(){if(player.attackCd>0||openBag)return;player.attackCd=.38;for(const m of mobs){const dx=m.x-player.x,dy=m.y-player.y,d=Math.hypot(dx,dy);if(d<92){m.hp-=player.damage;m.hit=.12;m.aggro=true;player.lastCombatAt=performance.now()/1000;if(m.hp<=0){loot.push({x:m.x,y:m.y,r:9,t:30,value:5});m.dead=true}}}mobs=mobs.filter(m=>!m.dead)}
 document.querySelector("#attack").addEventListener("pointerdown",e=>{e.preventDefault();attack()});
 const joy=document.querySelector("#joystick"),stick=document.querySelector("#stick");let joyId=null;
 function joyMove(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,len=Math.hypot(dx,dy),max=36,k=len>max?max/len:1;input.x=dx/(len||1);input.y=dy/(len||1);if(len<7)input.x=input.y=0;stick.style.transform=`translate(${dx*k}px,${dy*k}px)`}
@@ -22,8 +22,12 @@ function update(dt){
  player.attackCd=Math.max(0,player.attackCd-dt);
  if(!openBag&&(input.x||input.y)){const l=Math.hypot(input.x,input.y)||1,dx=input.x/l,dy=input.y/l;player.x+=dx*player.speed*dt;player.y+=dy*player.speed*dt;player.dirX=dx;player.dirY=dy}
  const halfViewW=Math.min(W/2,WORLD.w/2),halfViewH=Math.min(H/2,WORLD.h/2);player.x=Math.max(halfViewW,Math.min(WORLD.w-halfViewW,player.x));player.y=Math.max(halfViewH,Math.min(WORLD.h-halfViewH,player.y));
- if(!openBag)for(const m of mobs){const dx=player.x-m.x,dy=player.y-m.y,d=Math.hypot(dx,dy)||1;if(d<155)m.aggro=true;if(m.aggro){if(d>360)m.aggro=false;else if(d>42){m.x+=dx/d*m.speed*dt;m.y+=dy/d*m.speed*dt}else player.hp=Math.max(0,player.hp-10*dt)}else{m.wanderT-=dt;if(m.wanderT<=0){m.wanderT=1.5+Math.random()*4;m.wanderA=Math.random()*Math.PI*2}if(Math.hypot(m.x-m.homeX,m.y-m.homeY)>130)m.wanderA=Math.atan2(m.homeY-m.y,m.homeX-m.x);m.x+=Math.cos(m.wanderA)*m.speed*.18*dt;m.y+=Math.sin(m.wanderA)*m.speed*.18*dt}m.hit=Math.max(0,m.hit-dt)}
+ if(!openBag)for(const m of mobs){const dx=player.x-m.x,dy=player.y-m.y,d=Math.hypot(dx,dy)||1;if(d<155){m.aggro=true;player.lastCombatAt=performance.now()/1000;}if(m.aggro){if(d>360)m.aggro=false;else if(d>42){m.x+=dx/d*m.speed*dt;m.y+=dy/d*m.speed*dt}else{player.hp=Math.max(0,player.hp-10*dt);player.lastCombatAt=performance.now()/1000;}}else{m.wanderT-=dt;if(m.wanderT<=0){m.wanderT=1.5+Math.random()*4;m.wanderA=Math.random()*Math.PI*2}if(Math.hypot(m.x-m.homeX,m.y-m.homeY)>130)m.wanderA=Math.atan2(m.homeY-m.y,m.homeX-m.x);m.x+=Math.cos(m.wanderA)*m.speed*.18*dt;m.y+=Math.sin(m.wanderA)*m.speed*.18*dt}m.hit=Math.max(0,m.hit-dt)}
  for(const l of loot){l.t-=dt;if(Math.hypot(player.x-l.x,player.y-l.y)<42){l.got=true;coins+=l.value;drops++;document.querySelector("#coins").textContent=Math.round(coins);document.querySelector("#drops").textContent=drops}}loot=loot.filter(l=>!l.got&&l.t>0);
+ // Regenerate only after combat has ended: wait 5s, then recover 8 HP/s.
+ const nowSec=performance.now()/1000;
+ const inCombat=mobs.some(m=>m.aggro&&Math.hypot(player.x-m.x,player.y-m.y)<=360);
+ if(player.hp>0&&player.hp<player.maxHp&&!inCombat&&nowSec-player.lastCombatAt>=player.regenDelay)player.hp=Math.min(player.maxHp,player.hp+player.regenRate*dt);
  if(!openBag){const bag=deathBags.find(b=>Math.hypot(player.x-b.x,player.y-b.y)<45);if(bag)openDeathBag(bag)}
  if(player.hp<=0){const x=player.x,y=player.y;if(drops>0||coins>0){const items=[];for(let i=0;i<drops;i++)items.push({qty:1,value:drops?coins/drops:0});if(!drops&&coins>0)items.push({qty:0,value:coins});deathBags.push({x,y,items})}coins=0;drops=0;document.querySelector("#coins").textContent=0;document.querySelector("#drops").textContent=0;player.hp=100;player.x=WORLD.w/2;player.y=WORLD.h/2}
  camera.x=Math.max(0,Math.min(WORLD.w-W,player.x-W/2));camera.y=Math.max(0,Math.min(WORLD.h-H,player.y-H/2));document.querySelector("#hp").style.width=player.hp+"%";document.querySelector("#hpText").textContent=Math.ceil(player.hp)+"/100";
