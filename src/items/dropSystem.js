@@ -1,0 +1,3 @@
+import {CONFIG} from "../core/config.js";import {state} from "../core/state.js";import {createItem,EQUIPMENT_TYPES} from "./itemCatalog.js";
+const EQUIPMENT_DROP_CHANCE=.22;
+export function spawnMobLoot(x,y){state.loot.push({x,y,r:7,t:CONFIG.loot.life,value:CONFIG.loot.value,kind:"coins"});if(Math.random()<EQUIPMENT_DROP_CHANCE){const type=EQUIPMENT_TYPES[Math.floor(Math.random()*EQUIPMENT_TYPES.length)],item=createItem(type);state.loot.push({x:x+12,y:y-8,r:8,t:CONFIG.loot.life,kind:"item",item})}}
